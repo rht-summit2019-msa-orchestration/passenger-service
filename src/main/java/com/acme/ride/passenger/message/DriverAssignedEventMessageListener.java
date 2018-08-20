@@ -56,6 +56,8 @@ public class DriverAssignedEventMessageListener {
             throw new IllegalStateException(e.getMessage(), e);
         }
 
+        log.info("Consumed 'DriverAssignedEvent' for ride " + message.getPayload().getRideId());
+
         if (passengerCanceled(message.getPayload().getRideId())) {
             int delay = new DataGenerator().numeric(minDelay, maxDelay).intValue();
             scheduler.schedule(scheduleSendMessage(buildPassengerCanceledMessage(message)), delay, TimeUnit.SECONDS);
