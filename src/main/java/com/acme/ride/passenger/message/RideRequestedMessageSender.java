@@ -26,7 +26,7 @@ public class RideRequestedMessageSender {
         try {
             String json = new ObjectMapper().writeValueAsString(msg);
             jmsTemplate.convertAndSend(destination, json);
-            log.info("Sent 'RideRequestedEvent' for ride " + msg.getPayload().getRideId());
+            log.debug("Sent 'RideRequestedEvent' message for ride " + msg.getPayload().getRideId());
         } catch (JsonProcessingException e) {
             log.error("Error transforming message to json " + msg, e);
             throw new RuntimeException(e);

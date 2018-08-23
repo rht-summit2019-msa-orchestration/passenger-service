@@ -56,7 +56,7 @@ public class DriverAssignedEventMessageListener {
             throw new IllegalStateException(e.getMessage(), e);
         }
 
-        log.info("Consumed 'DriverAssignedEvent' for ride " + message.getPayload().getRideId());
+        log.debug("Consumed 'DriverAssignedEvent' message for ride " + message.getPayload().getRideId());
 
         if (passengerCanceled(message.getPayload().getRideId())) {
             int delay = new DataGenerator().numeric(minDelay, maxDelay).intValue();
@@ -69,7 +69,7 @@ public class DriverAssignedEventMessageListener {
             UUID uuid = UUID.fromString(rideId);
             long leastSignificantBits = uuid.getLeastSignificantBits() & 0x0000000F;
             if (leastSignificantBits == 14) {
-                log.info("Passenger is canceling ride " + rideId);
+                log.debug("Passenger is canceling ride " + rideId);
                 return true;
             }
         } catch (IllegalArgumentException e) {
@@ -93,7 +93,7 @@ public class DriverAssignedEventMessageListener {
         try {
             String messageType = JsonPath.read(messageAsJson, "$.messageType");
             if (!"DriverAssignedEvent".equalsIgnoreCase(messageType) ) {
-                log.info("Message with type '" + messageType + "' is ignored");
+                log.debug("Message with type '" + messageType + "' is ignored");
                 return false;
             }
             return true;
