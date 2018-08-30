@@ -4,6 +4,8 @@ import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.MockitoAnnotations.initMocks;
@@ -12,10 +14,12 @@ import static org.springframework.test.util.ReflectionTestUtils.setField;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
+import com.acme.ride.passenger.message.RideRequestedMessageSender;
 import com.acme.ride.passenger.message.model.Message;
 import com.acme.ride.passenger.message.model.RideRequestedEvent;
-import com.acme.ride.passenger.message.RideRequestedMessageSender;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -25,6 +29,8 @@ import org.mockito.Mock;
 public class SimulatorServiceTest {
 
     private SimulationService simulationService;
+
+    CountDownLatch latch;
 
     @Mock
     private RideRequestedMessageSender messageSender;
@@ -37,11 +43,19 @@ public class SimulatorServiceTest {
         initMocks(this);
         simulationService = new SimulationService();
         setField(simulationService, null, messageSender, RideRequestedMessageSender.class);
+        setField(simulationService, "threadPoolSize", 1, null);
+        simulationService.init();
+        doAnswer(invocation -> {
+            latch.countDown();
+            return null;
+        }).when(messageSender).send(any());
     }
 
     @Test
-    public void testSingleMessageType0() {
+    public void testSingleMessageType0() throws InterruptedException {
+        latch = new CountDownLatch(1);
         simulationService.simulate(1,0);
+        latch.await(3, TimeUnit.SECONDS);
         verify(messageSender).send(messageCaptor.capture());
         Message<RideRequestedEvent> message = messageCaptor.getValue();
         assertThat(message, notNullValue());
@@ -60,8 +74,10 @@ public class SimulatorServiceTest {
     }
 
     @Test
-    public void testSingleMessageType1() {
+    public void testSingleMessageType1() throws InterruptedException {
+        latch = new CountDownLatch(1);
         simulationService.simulate(1,1);
+        latch.await(3, TimeUnit.SECONDS);
         verify(messageSender).send(messageCaptor.capture());
         Message<RideRequestedEvent> message = messageCaptor.getValue();
         assertThat(message, notNullValue());
@@ -81,8 +97,10 @@ public class SimulatorServiceTest {
     }
 
     @Test
-    public void testSingleMessageType2() {
+    public void testSingleMessageType2() throws InterruptedException {
+        latch = new CountDownLatch(1);
         simulationService.simulate(1,2);
+        latch.await(3, TimeUnit.SECONDS);
         verify(messageSender).send(messageCaptor.capture());
         Message<RideRequestedEvent> message = messageCaptor.getValue();
         assertThat(message, notNullValue());
@@ -102,8 +120,10 @@ public class SimulatorServiceTest {
     }
 
     @Test
-    public void testSingleMessageType3() {
+    public void testSingleMessageType3() throws InterruptedException {
+        latch = new CountDownLatch(1);
         simulationService.simulate(1,3);
+        latch.await(3, TimeUnit.SECONDS);
         verify(messageSender).send(messageCaptor.capture());
         Message<RideRequestedEvent> message = messageCaptor.getValue();
         assertThat(message, notNullValue());
@@ -123,8 +143,10 @@ public class SimulatorServiceTest {
     }
 
     @Test
-    public void testMultipleMessages() {
+    public void testMultipleMessages() throws InterruptedException {
+        latch = new CountDownLatch(2);
         simulationService.simulate(2,0);
+        latch.await(3, TimeUnit.SECONDS);
         verify(messageSender, times(2)).send(messageCaptor.capture());
         List<Message<RideRequestedEvent>> messages =  messageCaptor.getAllValues();
         assertThat(messages.size(), equalTo(2));

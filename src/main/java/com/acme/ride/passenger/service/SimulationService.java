@@ -2,11 +2,16 @@ package com.acme.ride.passenger.service;
 
 import java.util.Date;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
+import com.acme.ride.passenger.message.RideRequestedMessageSender;
 import com.acme.ride.passenger.message.model.Message;
 import com.acme.ride.passenger.message.model.RideRequestedEvent;
-import com.acme.ride.passenger.message.RideRequestedMessageSender;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -14,6 +19,11 @@ public class SimulationService {
 
     @Autowired
     private RideRequestedMessageSender messageSender;
+
+    @Value("${simulator.pool.size}")
+    int threadPoolSize;
+
+    private ExecutorService scheduler;
 
     private DataGenerator generator = new DataGenerator();
 
@@ -28,8 +38,15 @@ public class SimulationService {
         }
 
         for (int i = 0; i < messages; i++) {
-            messageSender.send(buildRideRequestedEventMessage(type));
+            scheduler.submit(scheduleSendMessage(type));
         }
+    }
+
+    private Runnable scheduleSendMessage(final int type) {
+        Runnable runnable = () -> {
+            messageSender.send(buildRideRequestedEventMessage(type));
+        };
+        return runnable;
     }
 
     private Message<RideRequestedEvent> buildRideRequestedEventMessage(int type) {
@@ -85,6 +102,19 @@ public class SimulationService {
             location2 = generator.location();
         }
         return new String[]{location1, location2};
+    }
+
+
+    @PostConstruct
+    public void init() {
+        scheduler = Executors.newFixedThreadPool(threadPoolSize);
+    }
+
+    @PreDestroy
+    public void destroy() {
+        if (scheduler != null) {
+            scheduler.shutdownNow();
+        }
     }
 
 }
