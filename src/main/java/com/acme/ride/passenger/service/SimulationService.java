@@ -2,8 +2,9 @@ package com.acme.ride.passenger.service;
 
 import java.util.Date;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
@@ -23,7 +24,10 @@ public class SimulationService {
     @Value("${simulator.pool.size}")
     int threadPoolSize;
 
-    private ExecutorService scheduler;
+    @Value("${simulator.delay}")
+    int delay;
+
+    private ScheduledExecutorService scheduler;
 
     private DataGenerator generator = new DataGenerator();
 
@@ -38,7 +42,7 @@ public class SimulationService {
         }
 
         for (int i = 0; i < messages; i++) {
-            scheduler.submit(scheduleSendMessage(type));
+            scheduler.schedule(scheduleSendMessage(type), delay*i, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -107,7 +111,7 @@ public class SimulationService {
 
     @PostConstruct
     public void init() {
-        scheduler = Executors.newFixedThreadPool(threadPoolSize);
+        scheduler = Executors.newScheduledThreadPool(threadPoolSize);
     }
 
     @PreDestroy
