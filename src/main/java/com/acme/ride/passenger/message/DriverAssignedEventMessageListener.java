@@ -18,7 +18,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jms.annotation.JmsListener;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -40,8 +43,9 @@ public class DriverAssignedEventMessageListener {
     @Autowired
     private PassengerCanceledMessageSender messageSender;
 
-    @JmsListener(destination = "${listener.destination.driver-assigned}", subscription= "${listener.subscription.driver-assigned}")
-    public void processMessage(String messageAsJson) {
+    @KafkaListener(topics = "${listener.destination.driver-assigned}")
+    public void processMessage(@Payload String messageAsJson, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key,
+                               @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition) {
 
         if (!accept(messageAsJson)) {
             return;
@@ -56,7 +60,7 @@ public class DriverAssignedEventMessageListener {
             throw new IllegalStateException(e.getMessage(), e);
         }
 
-        log.debug("Consumed 'DriverAssignedEvent' message for ride " + message.getPayload().getRideId());
+        log.debug("Consumed 'DriverAssignedEvent' message for ride " + message.getPayload().getRideId() + "from partition " + partition);
 
         if (passengerCanceled(message.getPayload().getRideId())) {
             int delay = new DataGenerator().numeric(minDelay, maxDelay).intValue();
@@ -104,10 +108,10 @@ public class DriverAssignedEventMessageListener {
     }
 
     private Runnable scheduleSendMessage(final Message<PassengerCanceledEvent> message) {
-        Runnable runnable = () -> {
+        return () -> {
+            log.debug("About to send 'PassengerCanceled' message for ride " + message.getPayload().getRideId());
             messageSender.send(message);
         };
-        return runnable;
     }
 
     @PostConstruct

@@ -22,10 +22,10 @@ public class SimulationService {
     private RideRequestedMessageSender messageSender;
 
     @Value("${simulator.pool.size}")
-    int threadPoolSize;
+    private int threadPoolSize;
 
     @Value("${simulator.delay}")
-    int delay;
+    private int delay;
 
     private ScheduledExecutorService scheduler;
 
@@ -47,10 +47,9 @@ public class SimulationService {
     }
 
     private Runnable scheduleSendMessage(final int type) {
-        Runnable runnable = () -> {
+        return () -> {
             messageSender.send(buildRideRequestedEventMessage(type));
         };
-        return runnable;
     }
 
     private Message<RideRequestedEvent> buildRideRequestedEventMessage(int type) {

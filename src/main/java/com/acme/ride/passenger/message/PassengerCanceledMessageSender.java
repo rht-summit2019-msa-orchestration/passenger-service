@@ -2,14 +2,14 @@ package com.acme.ride.passenger.message;
 
 import com.acme.ride.passenger.message.model.Message;
 import com.acme.ride.passenger.message.model.PassengerCanceledEvent;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jms.core.JmsTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
+import org.springframework.util.concurrent.ListenableFuture;
 
 @Component
 public class PassengerCanceledMessageSender {
@@ -17,20 +17,16 @@ public class PassengerCanceledMessageSender {
     private static final Logger log = LoggerFactory.getLogger(PassengerCanceledMessageSender.class);
 
     @Autowired
-    private JmsTemplate jmsTemplate;
+    private KafkaTemplate<String, Message<?>> kafkaTemplate;
 
     @Value("${sender.destination.passenger-canceled}")
     private String destination;
 
     public void send(Message<PassengerCanceledEvent> msg) {
-        try {
-            String json = new ObjectMapper().writeValueAsString(msg);
-            jmsTemplate.convertAndSend(destination, json);
-            log.debug("Sent 'PassengerCanceled' message for ride " + msg.getPayload().getRideId());
-        } catch (JsonProcessingException e) {
-            log.error("Error transforming message to json " + msg, e);
-            throw new RuntimeException(e);
-        }
+        ListenableFuture<SendResult<String, Message<?>>> future = kafkaTemplate.send(destination, msg.getPayload().getRideId(), msg);
+        future.addCallback(
+                result -> log.debug("Sent 'PassengerCanceledEvent' message for ride " + msg.getPayload().getRideId()),
+                ex -> log.error("Error sending 'PassengerCanceledEvent' message for ride " + msg.getPayload().getRideId(), ex));
     }
 
 }

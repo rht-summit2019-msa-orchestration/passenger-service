@@ -2,10 +2,9 @@ package com.acme.ride.passenger;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.jms.annotation.EnableJms;
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 
-@SpringBootApplication
-@EnableJms
+@SpringBootApplication(exclude = { KafkaAutoConfiguration.class })
 public class PassengerServiceApplication {
 
     public static void main(String[] args) {

@@ -48,7 +48,7 @@ public class DriverAssignedEventMessageListenerTest {
                 "\"payload\":{\"rideId\":\"2333b91b-08a6-4056-9707-df65c8abfa50\"," +
                 "\"driverId\": \"driver\"}}";
 
-        listener.processMessage(json);
+        listener.processMessage(json, "2333b91b-08a6-4056-9707-df65c8abfa50", 1);
 
         Thread.sleep(1500);
         verify(messageSender, Mockito.never()).send(Mockito.any());
@@ -68,7 +68,7 @@ public class DriverAssignedEventMessageListenerTest {
                 "\"payload\":{\"rideId\": \"" + rideId + "\"," +
                 "\"driverId\": \"driver\"}}";
 
-        listener.processMessage(json);
+        listener.processMessage(json, rideId, 1);
 
         Thread.sleep(1500);
         verify(messageSender).send(messageCaptor.capture());
