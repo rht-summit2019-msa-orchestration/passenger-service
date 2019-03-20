@@ -7,8 +7,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.springframework.test.util.ReflectionTestUtils.setField;
 
+import java.util.HashMap;
+
 import com.acme.ride.passenger.message.model.Message;
 import com.acme.ride.passenger.message.model.PassengerCanceledEvent;
+import io.opentracing.Tracer;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -23,6 +26,9 @@ public class DriverAssignedEventMessageListenerTest {
     @Mock
     private PassengerCanceledMessageSender messageSender;
 
+    @Mock
+    private Tracer tracer;
+
     @Captor
     private ArgumentCaptor<Message> messageCaptor;
 
@@ -34,6 +40,7 @@ public class DriverAssignedEventMessageListenerTest {
         setField(listener, "minDelay", 1, null);
         setField(listener, "maxDelay", 1, null);
         setField(listener, null, messageSender, PassengerCanceledMessageSender.class);
+        setField(listener, null, tracer, Tracer.class);
         listener.init();
     }
 
@@ -48,7 +55,7 @@ public class DriverAssignedEventMessageListenerTest {
                 "\"payload\":{\"rideId\":\"2333b91b-08a6-4056-9707-df65c8abfa50\"," +
                 "\"driverId\": \"driver\"}}";
 
-        listener.processMessage(json, "2333b91b-08a6-4056-9707-df65c8abfa50", 1);
+        listener.processMessage(json, "2333b91b-08a6-4056-9707-df65c8abfa50", 1, new HashMap<>());
 
         Thread.sleep(1500);
         verify(messageSender, Mockito.never()).send(Mockito.any());
@@ -68,7 +75,7 @@ public class DriverAssignedEventMessageListenerTest {
                 "\"payload\":{\"rideId\": \"" + rideId + "\"," +
                 "\"driverId\": \"driver\"}}";
 
-        listener.processMessage(json, rideId, 1);
+        listener.processMessage(json, rideId, 1, new HashMap<>());
 
         Thread.sleep(1500);
         verify(messageSender).send(messageCaptor.capture());

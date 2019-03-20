@@ -5,9 +5,12 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.springframework.test.util.ReflectionTestUtils.setField;
 
@@ -20,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 import com.acme.ride.passenger.message.RideRequestedMessageSender;
 import com.acme.ride.passenger.message.model.Message;
 import com.acme.ride.passenger.message.model.RideRequestedEvent;
+import io.opentracing.Scope;
+import io.opentracing.Tracer;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -35,6 +40,15 @@ public class SimulatorServiceTest {
     @Mock
     private RideRequestedMessageSender messageSender;
 
+    @Mock
+    private Tracer tracer;
+
+    @Mock
+    private Tracer.SpanBuilder spanBuilder;
+
+    @Mock
+    private Scope scope;
+
     @Captor
     private ArgumentCaptor<Message<RideRequestedEvent>> messageCaptor;
 
@@ -44,6 +58,12 @@ public class SimulatorServiceTest {
         simulationService = new SimulationService();
         setField(simulationService, null, messageSender, RideRequestedMessageSender.class);
         setField(simulationService, "threadPoolSize", 1, null);
+        setField(simulationService, null, tracer, Tracer.class);
+        when(tracer.buildSpan(anyString())).thenReturn(spanBuilder);
+        when(spanBuilder.ignoreActiveSpan()).thenReturn(spanBuilder);
+        when(spanBuilder.withTag(anyString(), anyString())).thenReturn(spanBuilder);
+        when(spanBuilder.startActive(anyBoolean())).thenReturn(scope);
+
         simulationService.init();
         doAnswer(invocation -> {
             latch.countDown();

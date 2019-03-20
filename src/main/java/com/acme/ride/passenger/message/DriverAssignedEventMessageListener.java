@@ -1,5 +1,7 @@
 package com.acme.ride.passenger.message;
 
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -11,9 +13,13 @@ import com.acme.ride.passenger.message.model.DriverAssignedEvent;
 import com.acme.ride.passenger.message.model.Message;
 import com.acme.ride.passenger.message.model.PassengerCanceledEvent;
 import com.acme.ride.passenger.service.DataGenerator;
+import com.acme.ride.passenger.tracing.TracingKafkaUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +27,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Headers;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +37,9 @@ public class DriverAssignedEventMessageListener {
     private final static Logger log = LoggerFactory.getLogger(DriverAssignedEventMessageListener.class);
 
     private ScheduledExecutorService scheduler;
+
+    @Autowired
+    private Tracer tracer;
 
     @Value("${scheduler.pool.size}")
     int threadPoolSize;
@@ -45,11 +55,14 @@ public class DriverAssignedEventMessageListener {
 
     @KafkaListener(topics = "${listener.destination.driver-assigned}")
     public void processMessage(@Payload String messageAsJson, @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key,
-                               @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition) {
+                               @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition, @Headers Map<String, Object> headers) {
 
         if (!accept(messageAsJson)) {
             return;
         }
+
+        //create new span
+        Scope scope = TracingKafkaUtils.buildChildSpan("processDriverAssignedMessage", headers, tracer);
 
         Message<DriverAssignedEvent> message = null;
         try {
@@ -65,6 +78,10 @@ public class DriverAssignedEventMessageListener {
         if (passengerCanceled(message.getPayload().getRideId())) {
             int delay = new DataGenerator().numeric(minDelay, maxDelay).intValue();
             scheduler.schedule(scheduleSendMessage(buildPassengerCanceledMessage(message)), delay, TimeUnit.SECONDS);
+        }
+
+        if (scope != null) {
+            scope.close();
         }
     }
 
@@ -108,8 +125,10 @@ public class DriverAssignedEventMessageListener {
     }
 
     private Runnable scheduleSendMessage(final Message<PassengerCanceledEvent> message) {
+        final Optional<Span> span = Optional.ofNullable(tracer.activeSpan());
         return () -> {
             log.debug("About to send 'PassengerCanceled' message for ride " + message.getPayload().getRideId());
+                span.ifPresent(s -> tracer.scopeManager().activate(s, true));
             messageSender.send(message);
         };
     }

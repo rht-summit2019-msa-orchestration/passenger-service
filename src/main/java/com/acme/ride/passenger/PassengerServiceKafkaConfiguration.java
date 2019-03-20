@@ -4,10 +4,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.acme.ride.passenger.message.model.Message;
+import com.acme.ride.passenger.tracing.TracingKafkaConsumerFactory;
+import com.acme.ride.passenger.tracing.TracingKafkaProducerFactory;
+import io.opentracing.Tracer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +30,9 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 @EnableKafka
 public class PassengerServiceKafkaConfiguration {
 
+    @Autowired
+    Tracer tracer;
+
     @Value(value = "${kafka.bootstrap-address}")
     private String bootstrapAddress;
 
@@ -41,7 +48,8 @@ public class PassengerServiceKafkaConfiguration {
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        return new DefaultKafkaProducerFactory<>(configProps);
+        ProducerFactory<String, Message<?>> producerFactory = new DefaultKafkaProducerFactory<>(configProps);
+        return new TracingKafkaProducerFactory<>(producerFactory, tracer);
     }
 
     @Bean
@@ -57,7 +65,8 @@ public class PassengerServiceKafkaConfiguration {
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         configProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, new Boolean(true));
-        return new DefaultKafkaConsumerFactory<>(configProps);
+        ConsumerFactory<String, String> consumerFactory= new DefaultKafkaConsumerFactory<>(configProps);
+        return new TracingKafkaConsumerFactory<>(consumerFactory, tracer);
     }
 
     @Bean
