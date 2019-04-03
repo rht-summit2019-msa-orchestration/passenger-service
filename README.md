@@ -1,7 +1,7 @@
 #### Acme Ride - Passenger Service
 
-* Implemented with Spring Boot - version 1.5.17.RELEASE (aligned with RHOAR release). 
-* Spring Kafka client 
+* Implemented with Spring Boot - version 2.1.3.RELEASE (aligned with latest RHOAR release). 
+* Spring Kafka client
 * Exposes REST interface to trigger the sending of 1 or more `RideRequestedEvent` messages.
 
 
