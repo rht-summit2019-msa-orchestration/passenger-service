@@ -1,6 +1,6 @@
 #### Acme Ride - Passenger Service
 
-* Implemented with Spring Boot - version 1.5.17.RELEASE (aligned with RHOAR release). 
+* Implemented with Spring Boot - version 2.1.3.RELEASE (aligned with latest RHOAR release).
 * Spring Kafka client
 * Integrated with Jaeger for distributed tracing
 * Exposes REST interface to trigger the sending of 1 or more `RideRequestedEvent` messages.
